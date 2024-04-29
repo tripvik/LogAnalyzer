@@ -1,0 +1,84 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+@inject ISnackbar Snackbar
+
+@if (StreamReader is null)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <MudStack Style="width: 100%">
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           AppendMultipleFiles
+                           OnFilesChanged="OnInputFileChanged"
+                           Hidden="@false"
+                           InputClass="absolute mud-width-full mud-height-full overflow-hidden z-20"
+                           InputStyle="opacity:0"
+                           @ondragenter="@SetDragClass"
+                           @ondragleave="@ClearDragClass"
+                           @ondragend="@ClearDragClass">
+                <ButtonTemplate>
+                    <MudPaper Height="300px"
+                              Outlined="true"
+                              Class="@_dragClass">
+                        <MudText Typo="Typo.h6">
+                            Drag and drop files here or click
+                        </MudText>
+                        @foreach (var file in _fileNames)
+                        {
+                            <MudChip Color="Color.Dark" Text="@file" />
+                        }
+                    </MudPaper>
+                    <MudToolBar DisableGutters="true"
+                                Class="relative d-flex justify-end gap-4 z-30">
+                        <MudButton HtmlTag="label"
+                                   Color="Color.Primary"
+                                   for="@context.Id"
+                                   Variant="Variant.Filled">
+                            Select File
+                        </MudButton>
+                        <MudButton OnClick="@Clear"
+                                   Color="Color.Error"
+                                   Disabled="@(!_fileNames.Any())"
+                                   Variant="Variant.Filled">
+                            Clear
+                        </MudButton>
+                    </MudToolBar>
+                </ButtonTemplate>
+            </MudFileUpload>
+        </MudStack>
+    </MudContainer>
+}
+else
+{
+    <Analyzer StreamReader="@StreamReader" />
+}
+
+
+
+@code {
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
+    private string _dragClass = DefaultDragClass;
+    private readonly List<string> _fileNames = new();
+    private StreamReader StreamReader = default!;
+    private long maxFileSize = 1024 * 1024 * 15;
+
+    private async Task Clear()
+    {
+        _fileNames.Clear();
+        ClearDragClass();
+        await Task.Delay(100);
+    }
+
+    private void OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        ClearDragClass();
+        StreamReader = new StreamReader(e.File.OpenReadStream(maxFileSize));
+    }
+
+    private void SetDragClass()
+        => _dragClass = $"{DefaultDragClass} mud-border-primary";
+
+    private void ClearDragClass()
+        => _dragClass = DefaultDragClass;
+}

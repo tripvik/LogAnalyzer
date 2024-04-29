@@ -1,0 +1,247 @@
+﻿@using System.Text.RegularExpressions
+@inject IDialogService DialogService
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;">
+            <MudIcon Icon="@Icons.Material.Filled.GetApp" Color="Color.Primary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary mb-n1">Agent Version</MudText>
+                <MudText Typo="Typo.h5">@agentVersion</MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;">
+            <MudIcon Icon="@Icons.Material.Filled.Handshake" Color="Color.Success" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary mb-n1">App Registrations</MudText>
+                <MudText Typo="Typo.h5">$"{@registrationInfo.Item1} Succeeded out of {@registrationInfo.Item2} Attempted" </MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;">
+            <MudIcon Icon="@Icons.Material.Filled.AccessTime" Color="Color.Secondary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary mb-n1">BT Registrations</MudText>
+                <MudText Typo="Typo.h5">@registeredBT</MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;">
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Warning" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary mb-n1">Unique Host</MudText>
+                <MudText Typo="Typo.h5">@hostname</MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="pa-10 ma-2">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Label="Select Applications..." MultiSelection="true" @bind-SelectedValues="selectedApps" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var app in apps)
+                {
+                    <MudSelectItem T="string" Value="@app">@app</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Label="Select Loggers..." MultiSelection="true" @bind-SelectedValues="selectedLoggers" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var logger in loggers)
+                {
+                    <MudSelectItem T="string" Value="@logger">@logger</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Label="Select Problem Areas..." MultiSelection="true" @bind-SelectedValues="selectedProblemAreas" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var problemArea in problemAreas)
+                {
+                    <MudSelectItem T="string" Value="@problemArea">@problemArea</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Class="py-4 align-center d-flex gap-4" Elevation="0">
+        <MudButton Disabled="@_filtering" OnClick="FilterLogs" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.Filter">
+            @if (_filtering)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Processing</MudText>
+            }
+            else
+            {
+                <MudText>Filter</MudText>
+            }
+        </MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error" FullWidth="true">Clear Filter</MudButton>
+        <MudSpacer />
+        <MudButton Disabled="@_analyzing" OnClick="AnalyzeLogs" Variant="Variant.Filled" Color="Color.Tertiary" FullWidth="true" EndIcon="@Icons.Material.Filled.Analytics">
+            @if (_analyzing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Processing</MudText>
+            }
+            else
+            {
+                <MudText>Analyze</MudText>
+            }
+        </MudButton>
+    </MudPaper>
+</MudPaper>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    @if (entries.Count > 0)
+    {
+        <Virtualize Items="entries" Context="entry">
+            <pre><code>@entry.Timestamp.ToString() @entry.ProcessName @entry.Logger @entry.Message</code></pre>
+        </Virtualize>
+    }
+    else
+    {
+        <MudText Align="Align.Center" Class="my-12">
+            <MudProgressCircular Color="Color.Primary" Style="height:70px;width:70px;" Indeterminate="true" />
+        </MudText>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public StreamReader? StreamReader { get; set; }
+
+    private List<LogEntry> entries = new();
+
+    private List<string> apps = new();
+    private List<string> loggers = new();
+    private List<string> problemAreas = new();
+    private bool _filtering = false;
+    private bool _analyzing = false;
+    private string agentVersion = "##.##";
+    private int registeredBT;
+    private string hostname = string.Empty;
+    private (int attempted, int succeeded) registrationInfo = (0, 0);
+
+    private IEnumerable<string> selectedApps { get; set; } = new HashSet<string>();
+    private IEnumerable<string> selectedLoggers { get; set; } = new HashSet<string>();
+    private IEnumerable<string> selectedProblemAreas { get; set; } = new HashSet<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (StreamReader is null)
+        {
+            Console.WriteLine("StreamReader cannot be null.");
+            return;
+        }
+
+        string? line;
+        while ((line = await StreamReader.ReadLineAsync()) != null)
+        {
+            LogEntry? entry = ParseLine(line);
+            if (entry != null)
+            {
+                entries.Add(entry);
+            }
+        }
+
+        apps = entries.Select(x => x.ProcessName).Distinct().ToList();
+        loggers = entries.Select(x => x.Logger).Distinct().ToList();
+    }
+
+    private LogEntry? ParseLine(string line)
+    {
+        string[] parts = line.Split(' ');
+        if (parts.Length < 8)
+        {
+            return null;
+        }
+        try
+        {
+            LogEntry entry = new LogEntry();
+            entry.Timestamp = DateTime.Parse(parts[0] + " " + parts[1]);
+            entry.ProcessId = int.Parse(parts[2]);
+            entry.ProcessName = parts[3];
+            entry.AppDomainId = parts[4];
+            entry.ThreadId = int.Parse(parts[5]);
+            entry.Level = parts[6];
+            entry.Logger = parts[7];
+            entry.Message = string.Join(" ", parts.Skip(8));
+            ScanMessage(entry.Message);
+            return entry;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null;
+        }
+    }
+
+    private void ScanMessage(string message)
+    {
+        // Use a regular expression to extract the value between '[' and ']'
+        // Check if the input line contains the specific text
+        if (message.Contains("setting unique host"))
+        {
+            string pattern = @"\[(.*?)\]";
+            Match match = Regex.Match(message, pattern);
+
+            if (match.Success)
+            {
+                hostname = match.Groups[1].Value;
+            }
+        }
+        if (message.Contains("Auto agent registration attempted"))
+        {
+            registrationInfo.attempted++;
+        }
+        if (message.Contains("Auto agent registration SUCCEEDED"))
+        {
+            registrationInfo.succeeded++;
+        }
+        @if (message.Contains("BusinessTransactionRegistry Registered BT Name"))
+        {
+            registeredBT++;
+        }
+    }
+
+    private void FilterLogs()
+    {
+        _filtering = true;
+
+        if (selectedApps.Count() > 0)
+        {
+            entries = entries.Where(x => selectedApps.Contains(x.ProcessName)).ToList();
+
+        }
+        if (selectedLoggers.Count() > 0)
+        {
+            entries = entries.Where(x => selectedLoggers.Contains(x.Logger)).ToList();
+        }
+
+        _filtering = false;
+    }
+
+    private void AnalyzeLogs()
+    {
+        _analyzing = true;
+
+        if (selectedApps.Count() > 0)
+        {
+            entries = entries.Where(x => selectedApps.Contains(x.ProcessName)).ToList();
+
+        }
+        if (selectedLoggers.Count() > 0)
+        {
+            entries = entries.Where(x => selectedLoggers.Contains(x.Logger)).ToList();
+        }
+
+        _analyzing = false;
+    }
+}
